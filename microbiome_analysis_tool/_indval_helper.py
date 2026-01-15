@@ -1,11 +1,7 @@
 import numpy as np
 
-def _calculate_indval_score(asv_table, groups, asv, target_samples, unique_groups):
+def _calculate_indval_score(asv_table, asv, target_samples, sum_mean_abundances):
     """Helper function to calculate the IndVal score."""
-    sum_mean_abundances = 0
-    for g in unique_groups:
-        sum_mean_abundances += asv_table.loc[groups.index[groups == g], asv].mean()
-
     if sum_mean_abundances == 0:
         return 0
 

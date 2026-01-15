@@ -540,11 +540,15 @@ def run_indicator_species(ps1_object, treatment_column, n_permutations=1999):
 
         indicator_results = []
         for asv in asv_table.columns:
+            sum_mean_abundances = 0
+            for g in unique_groups:
+                sum_mean_abundances += asv_table.loc[groups.index[groups == g], asv].mean()
+
             target_group, max_indval = None, -1
             for group in unique_groups:
                 target_samples = groups.index[groups == group]
                 if len(target_samples) == 0: continue
-                indval_score = _calculate_indval_score(asv_table, groups, asv, target_samples, unique_groups)
+                indval_score = _calculate_indval_score(asv_table, asv, target_samples, sum_mean_abundances)
                 if indval_score > max_indval:
                     max_indval, target_group = indval_score, group
 
@@ -564,7 +568,11 @@ def run_indicator_species(ps1_object, treatment_column, n_permutations=1999):
                 if len(perm_target_samples) == 0:
                     perm_stats.append(0)
                     continue
-                perm_stats.append(_calculate_indval_score(asv_table, perm_groups_series, asv, perm_target_samples, unique_groups))
+
+                perm_sum_mean_abundances = 0
+                for g in unique_groups:
+                    perm_sum_mean_abundances += asv_table.loc[perm_groups_series.index[perm_groups_series == g], asv].mean()
+                perm_stats.append(_calculate_indval_score(asv_table, asv, perm_target_samples, perm_sum_mean_abundances))
             p_value = (np.sum(np.array(perm_stats) >= max_indval) + 1) / (n_permutations + 1)
             indicator_results.append({'ASV': asv, 'Associated Group': target_group, 'Indicator Score': max_indval, 'p_value': p_value})
 
@@ -584,6 +592,7 @@ def run_indicator_species(ps1_object, treatment_column, n_permutations=1999):
         # Create DataFrame and filter by significance
         results_df = pd.DataFrame(indicator_results)
         results_df = results_df[results_df['significant']]
+        results_df = results_df.sort_values('p_adj', ascending=True)
         # --- End of Multiple Testing Block ---
         significant_indicators_with_taxa = results_df.merge(taxa, left_on='ASV', right_index=True)
         significant_indicators_with_taxa.fillna('', inplace=True)
