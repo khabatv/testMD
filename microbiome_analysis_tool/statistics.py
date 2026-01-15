@@ -38,6 +38,7 @@ from skbio.stats.distance import permanova
 from skbio.stats.composition import ancom
 from dash import html
 from .config import logger, CPU_CORES
+from ._indval_helper import _calculate_indval_score
 
 def perform_pairwise_alpha_tests(alpha_df, treatment_col, p_adjust_method='fdr_bh'):
     groups = alpha_df[treatment_col].unique()
@@ -529,51 +530,67 @@ def run_differential_abundance(ps1_object, treatment_column):
         logger.error(f"Differential abundance analysis failed: {e}", exc_info=True)
         return html.P(f"Error during differential abundance analysis: {e}")
 
-def run_indicator_species(ps1_object, treatment_column, n_permutations=999):
+def run_indicator_species(ps1_object, treatment_column, n_permutations=1999):
     try:
         logger.info("Running Indicator Species Analysis...")
-        asv_pa_table = (ps1_object['asv'] > 0).astype(int).T
+        asv_table = ps1_object['asv'].T
         groups, taxa = ps1_object['meta'][treatment_column], ps1_object['tax']
         unique_groups = sorted(groups.unique())
         if len(unique_groups) < 2: return html.P("At least two groups are needed."), pd.DataFrame()
 
         indicator_results = []
-        for asv in asv_pa_table.columns:
+        for asv in asv_table.columns:
             target_group, max_indval = None, -1
             for group in unique_groups:
                 target_samples = groups.index[groups == group]
                 if len(target_samples) == 0: continue
-                in_target_count, total_count = asv_pa_table.loc[target_samples, asv].sum(), asv_pa_table[asv].sum()
-                if total_count == 0: continue
-                specificity, fidelity = in_target_count / total_count, in_target_count / len(target_samples)
-                indval_score = specificity * fidelity
+                indval_score = _calculate_indval_score(asv_table, groups, asv, target_samples, unique_groups)
                 if indval_score > max_indval:
                     max_indval, target_group = indval_score, group
 
             if max_indval <= 0: continue
             perm_stats = []
             for _ in range(n_permutations):
-                perm_groups = np.random.permutation(groups)
+                # Permute the pandas Series index, which corresponds to sample IDs
+                perm_indices = np.random.permutation(groups.index)
+                # Create a new series with the same values but a shuffled index
+                perm_groups_series = groups.copy()
+                perm_groups_series.index = perm_indices
+                # Sort by the original index to align it with the asv_table for lookups
+                perm_groups_series = perm_groups_series.sort_index()
+                # The permuted group labels are now in this series
+                perm_groups = perm_groups_series.values
                 perm_target_samples = groups.index[perm_groups == target_group]
                 if len(perm_target_samples) == 0:
                     perm_stats.append(0)
                     continue
-                perm_in_target = asv_pa_table.loc[perm_target_samples, asv].sum()
-                perm_spec, perm_fid = perm_in_target / total_count, perm_in_target / len(perm_target_samples)
-                perm_stats.append(perm_spec * perm_fid)
+                perm_stats.append(_calculate_indval_score(asv_table, perm_groups_series, asv, perm_target_samples, unique_groups))
             p_value = (np.sum(np.array(perm_stats) >= max_indval) + 1) / (n_permutations + 1)
-            if p_value < 0.05:
-                indicator_results.append({'ASV': asv, 'Associated Group': target_group, 'Indicator Score': max_indval, 'p_value': p_value})
+            indicator_results.append({'ASV': asv, 'Associated Group': target_group, 'Indicator Score': max_indval, 'p_value': p_value})
 
-        if not indicator_results: return html.Div([html.H4("Indicator ASV Analysis"), html.P("No significant indicator ASVs found.")]), pd.DataFrame()
+        # --- Start of Multiple Testing Block ---
+        if not indicator_results:
+            return html.Div([html.H4("Indicator ASV Analysis"), html.P("No significant indicator ASVs found.")]), pd.DataFrame()
 
-        results_df = pd.DataFrame(indicator_results).sort_values('Indicator Score', ascending=False)
+        # Extract raw p-values and apply correction
+        p_values_raw = [res['p_value'] for res in indicator_results]
+        reject, p_adj, _, _ = multipletests(p_values_raw, alpha=0.05, method='fdr_bh')
+
+        # Add adjusted p-values and significance back to results
+        for i, res in enumerate(indicator_results):
+            res['p_adj'] = p_adj[i]
+            res['significant'] = reject[i]
+
+        # Create DataFrame and filter by significance
+        results_df = pd.DataFrame(indicator_results)
+        results_df = results_df[results_df['significant']]
+        # --- End of Multiple Testing Block ---
         significant_indicators_with_taxa = results_df.merge(taxa, left_on='ASV', right_index=True)
         significant_indicators_with_taxa.fillna('', inplace=True)
         significant_indicators_with_taxa['Taxon Name'] = significant_indicators_with_taxa['Genus'] + ' ' + significant_indicators_with_taxa['Species']
         significant_indicators_with_taxa['Taxon Name'] = significant_indicators_with_taxa['Taxon Name'].str.strip().replace('', 'Unclassified')
 
-        df_for_display = significant_indicators_with_taxa[['Associated Group', 'Indicator Score', 'p_value', 'Taxon Name']].round(4).head(25)
+        df_for_display = significant_indicators_with_taxa[['Associated Group', 'Indicator Score', 'p_adj', 'Taxon Name']].round(4).head(25)
         table = html.Table([html.Thead(html.Tr([html.Th(col) for col in df_for_display.columns]))] + [html.Tbody([html.Tr([html.Td(df_for_display.iloc[i][col]) for col in df_for_display.columns]) for i in range(len(df_for_display))])])
         return html.Div([html.H4("Indicator ASV Analysis (Top 25)"), table]), significant_indicators_with_taxa
     except Exception as e:
