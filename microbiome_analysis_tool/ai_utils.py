@@ -5,7 +5,9 @@ import numpy as np
 import gzip
 from Bio import SeqIO
 import google.generativeai as genai
-from .config import logger, GEMINI_API_KEY
+from . import config
+from .config import logger
+import importlib
 
 # Constants
 MAX_RETRIES = 3
@@ -16,14 +18,15 @@ model = None
 
 def configure_ai():
     global ai_available, model
-    if GEMINI_API_KEY == "YOUR_API_KEY_HERE":
+    importlib.reload(config)
+    if config.GEMINI_API_KEY == "YOUR_API_KEY_HERE":
         logger.warning("Gemini AI API key is not configured. Please set the GEMINI_API_KEY environment variable.")
         ai_available = False
         model = None
         return
 
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
+        genai.configure(api_key=config.GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
         # Test connection with a very small request

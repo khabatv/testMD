@@ -39,6 +39,13 @@ app.layout = html.Div([
     html.H1("Microbiome Analysis Dashboard"),
     dcc.Tabs([
         dcc.Tab(label='1. Setup & Inputs', children=[
+            html.Div([
+                html.H3("AI Configuration (Optional)"),
+                html.P("If you have a Google Gemini API key, you can enter it here to enable AI-powered features."),
+                dcc.Input(id='gemini-api-key-input', type='password', placeholder="Enter your API key...", style={'width': '60%'}),
+                html.Button('Save & Verify Key', id='save-api-key-button', n_clicks=0, style={'marginLeft': '10px'}),
+                html.Div(id='api-key-status', style={'marginTop': '10px'})
+            ], style={'marginTop': '20px', 'padding': '15px', 'border': '1px solid #ddd', 'borderRadius': '5px'}),
             html.H3("Input Data"),
             html.Button('Use Internal Sample Data', id='load-sample-data', n_clicks=0),
             html.Br(), html.Br(),
@@ -1214,6 +1221,28 @@ def download_log_file(n_clicks, output_dir):
     return None
 
 
+
+@app.callback(
+    Output('api-key-status', 'children'),
+    Input('save-api-key-button', 'n_clicks'),
+    State('gemini-api-key-input', 'value'),
+    prevent_initial_call=True
+)
+def update_api_key(n_clicks, api_key):
+    if not api_key:
+        return html.P("Please enter an API key.", style={'color': 'orange'})
+
+    os.environ['GEMINI_API_KEY'] = api_key
+
+    # We need to re-import and re-configure the AI utility
+    from . import ai_utils
+    import importlib
+    importlib.reload(ai_utils)
+
+    if ai_utils.ai_available:
+        return html.P("API Key saved and verified successfully! AI features are enabled.", style={'color': 'green'})
+    else:
+        return html.P("API Key saved, but verification failed. Please check the key and try again.", style={'color': 'red'})
 
 @app.callback(
     [Output('data-folder-path', 'value'),
