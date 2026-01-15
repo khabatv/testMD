@@ -11,11 +11,17 @@ metadata_path = os.path.join(data_dir, 'example-metadata.tsv')
 feature_table_path = os.path.join(data_dir, 'example-feature-table.tsv')
 taxonomy_path = os.path.join(data_dir, 'example-taxonomy.tsv')
 
-# Load the dataframes
-sample_metadata_df = pd.read_csv(metadata_path, sep='\t', index_col=0)
-# The feature table needs to be transposed to match the original format (samples x ASVs)
-sample_seqtab = pd.read_csv(feature_table_path, sep='\t', index_col=0)
-sample_taxa = pd.read_csv(taxonomy_path, sep='\t', index_col=0)
+# Load the dataframes with error handling
+try:
+    sample_metadata_df = pd.read_csv(metadata_path, sep='\t', index_col=0)
+    # The feature table needs to be transposed to match the original format (samples x ASVs)
+    sample_seqtab = pd.read_csv(feature_table_path, sep='\t', index_col=0)
+    sample_taxa = pd.read_csv(taxonomy_path, sep='\t', index_col=0)
+except FileNotFoundError:
+    print("WARNING: Example data files not found. Loading with empty dataframes.")
+    sample_metadata_df = pd.DataFrame()
+    sample_seqtab = pd.DataFrame()
+    sample_taxa = pd.DataFrame()
 
 # Ensure consistent naming of index columns
 sample_metadata_df.index.name = 'SampleID'
