@@ -8,9 +8,21 @@ This is a comprehensive tool for 16S rRNA microbiome data analysis, from raw FAS
 -   End-to-end pipeline: FASTQ quality filtering, ASV table generation (via VSEARCH), and taxonomy assignment.
 -   Core microbiome metrics: Alpha and Beta diversity, PCoA, PCA, and NMDS.
 -   Advanced statistics: PERMANOVA, differential abundance testing, indicator species analysis, and mixed-effect models (GEE & Bayesian ZINB).
--   AI-powered assistance for parameter suggestion and results interpretation (requires Google Gemini API key).
+-   AI-powered assistance for parameter suggestion and results interpretation.
 -   Automated PDF report generation.
 -   Interactive data visualization with Plotly and Dash.
+
+## AI Configuration (Optional)
+
+To enable the AI-powered features, you need a Google Gemini API key.
+
+1.  **Get a key**: Obtain a key from [Google AI Studio](https://aistudio.google.com/).
+2.  **Set the key**: You have two options:
+    *   **Environment Variable (Recommended)**: Set an environment variable named `GEMINI_API_KEY`.
+        ```bash
+        export GEMINI_API_KEY="YOUR_API_KEY_HERE"
+        ```
+    *   **In-App Configuration**: Alternatively, you can launch the application and enter your key directly in the "AI Configuration" section on the "Setup & Inputs" tab.
 
 ## Installation
 

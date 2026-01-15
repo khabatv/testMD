@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from ete3 import Tree, TreeStyle, NodeStyle, CircleFace, TextFace
+from ete3 import Tree
+from ete3.treeview.main import TreeStyle, NodeStyle
+from ete3.treeview.faces import CircleFace, TextFace
 from skbio import DistanceMatrix
 from skbio.tree import nj as skbio_nj
 from Bio import Align

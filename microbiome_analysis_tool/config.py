@@ -10,9 +10,10 @@ CPU_CORES = max(1, os.cpu_count() - 1)
 
 # --- AI Configuration ---
 
-# IMPORTANT: Replace "YOUR_API_KEY_HERE" with your actual Google Gemini API Key.
+# IMPORTANT: Set your Google Gemini API Key as an environment variable named GEMINI_API_KEY.
 # You can obtain a key from https://aistudio.google.com/
-GEMINI_API_KEY = "AIzaSyDiuCPQ8vYm9XLxB4yTSh4H1fBXxVcRUhY" # Placeholder Key
+# Alternatively, you can enter the key directly in the application's UI.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 
 # --- Logging Setup ---
 
