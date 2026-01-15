@@ -8,7 +8,7 @@ from dash import dcc, html, Input, Output, State, ctx
 import plotly.graph_objects as go
 import plotly.express as px
 # Internal module imports
-from .config import logger
+from .config import logger, setup_file_logger
 from .data.sample_data import sample_metadata_df, sample_seqtab, sample_taxa
 from .ai_utils import ai_available, ai_analyze_background, ai_analyze_quality_profiles, ai_analyze_metadata, ai_interpret_results
 from .pipeline_steps import filter_and_trim_parallel, denoise_and_create_asv_table_vsearch, assign_taxonomy
@@ -71,7 +71,7 @@ app.layout = html.Div([
                     dcc.Input(id='max-ee', value='2,2', type='text'),
                 ]),
                 html.H4("Downstream Analysis"),
-                html.Label("Treatment Group Column:"), dcc.Input(id='treatment-group', value='Substrate', type='text'),
+                html.Label("Treatment Group Column:"), dcc.Input(id='treatment-group', value='Treatment', type='text'),
                 html.Label("Groups to Compare (subsetting):"), dcc.Dropdown(id='subset-groups-dropdown', multi=True, placeholder="Leave blank for all"),
                 html.Label("Top ASVs for PCA:"), dcc.Input(id='top-asvs', value=50, type='number'),
 
@@ -119,7 +119,7 @@ dcc.Dropdown(
                     {'label': 'Negative Binomial GEE (Faster)', 'value': 'gee'},
                     {'label': 'Bayesian ZINB (PyMC - Placeholder)', 'value': 'pymc_zinb'}
                 ], value='gee'),
-                html.Label("Main Factor:"), dcc.Input(id='mem-treatment-col', value='Substrate', type='text'),
+                html.Label("Main Factor:"), dcc.Input(id='mem-treatment-col', value='Treatment', type='text'),
                 html.Label("Time/Second Factor (Optional):"), dcc.Input(id='time-col', value='', type='text'),
                 html.Label("Reference Group:"), dcc.Input(id='mem-reference-group-input', type='text', placeholder="e.g., Control"),
                 html.Label("Analysis Level:"), dcc.Dropdown(id='analysis-level-dropdown', options=[{'label': lvl, 'value': lvl} for lvl in ['ASV', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species']], value='Genus'),
@@ -165,6 +165,8 @@ dcc.Dropdown(
             html.Br(),
             html.Button('Download PDF Report', id='download-report-button', n_clicks=0),
             dcc.Download(id='download-report'),
+            html.Button('Download Log File', id='download-log-button', n_clicks=0),
+            dcc.Download(id='download-log'),
             html.H3("Output Files"),
             html.Div(id='output-files'),
         ])
@@ -420,6 +422,13 @@ def run_full_analysis(n_clicks, analysis_mode, data_path, out_dir, trunc_f, trun
                       rand_eff, analysis_lvl, mem_top_n, mem_ref, mem_show_insig, force_feat, da_method,
                       permanova_selected_factors, permanova_interaction_input, permanova_selected_strata, permanova_num_permutations):
     if n_clicks == 0:
+        return [no_update] * 18
+
+    try:
+        # --- Setup File Logger ---
+        os.makedirs(out_dir, exist_ok=True)
+        setup_file_logger(out_dir)
+
         empty_fig = go.Figure()
         empty_div = html.Div()
         return [
@@ -1214,6 +1223,19 @@ def download_pdf_report(n_clicks, output_dir, interpretations_md):
             if report_path:
                 return dcc.send_file(report_path)
         return None
+
+@app.callback(
+    Output('download-log', 'data'),
+    Input('download-log-button', 'n_clicks'),
+    State('output-dir', 'value'),
+    prevent_initial_call=True
+)
+def download_log_file(n_clicks, output_dir):
+    if n_clicks > 0:
+        log_file_path = os.path.join(output_dir, 'analysis_log.txt')
+        if os.path.exists(log_file_path):
+            return dcc.send_file(log_file_path)
+    return None
 
 
 

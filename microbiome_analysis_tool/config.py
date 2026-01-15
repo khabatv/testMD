@@ -23,3 +23,22 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("MicrobiomeTool")
+
+def setup_file_logger(output_dir):
+    """Adds a file handler to the root logger to capture all logs."""
+    # Ensure the handler is not added multiple times in a notebook environment
+    root_logger = logging.getLogger()
+    if any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
+        # Find and remove existing file handlers
+        for handler in root_logger.handlers[:]:
+            if isinstance(handler, logging.FileHandler):
+                handler.close()
+                root_logger.removeHandler(handler)
+
+    log_file = os.path.join(output_dir, 'analysis_log.txt')
+    file_handler = logging.FileHandler(log_file, mode='w')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+
+    root_logger.addHandler(file_handler)
+    logger.info(f"File logger initiated. All output will be saved to {log_file}")
