@@ -429,30 +429,6 @@ def run_full_analysis(n_clicks, analysis_mode, data_path, out_dir, trunc_f, trun
         os.makedirs(out_dir, exist_ok=True)
         setup_file_logger(out_dir)
 
-        empty_fig = go.Figure()
-        empty_div = html.Div()
-        return [
-            empty_fig,  # 1 seq-depth-plot
-            empty_fig,
-            empty_fig,  # 2 alpha-diversity-plot
-            empty_fig,  # 3 pcoa-plot
-            empty_fig,  # 4 pcoa-aitchison-plot
-            empty_fig,  # 5 pca-plot
-            empty_fig,  # 6 nmds-plot
-            empty_div,  # 7 permanova-results
-            empty_fig,  # 8 abundance-order-plot
-            empty_fig,  # 9 abundance-genus-plot
-            empty_div,  # 10 differential-abundance-results
-            empty_fig,  # 11 ancom-heatmap.figure
-            empty_div,  # 12 indicator-species-results
-            empty_div,  # 13 phylogenetic-tree
-            empty_div,  # 14 mixed-model-results
-            empty_fig,  # 15 mixed-model-plot
-            "",         # 16 ai-interpretations
-            empty_div   # 17 output-files
-        ]
-
-    try:
         # --- (Re)initialize run state ---
         sample_mode = global_data.get('sample_data_mode', False)
         global_data.clear()  # Reset data for new run
